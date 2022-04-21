@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace MyJetTools.Telemetry;
 
-internal static class ActivityExtensions
+public static class ActivityExtensions
 {
     public static string GetSpanId(this Activity activity)
     {
