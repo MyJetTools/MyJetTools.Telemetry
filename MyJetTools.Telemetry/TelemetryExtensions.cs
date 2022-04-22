@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using MyJetTools.Telemetry.Processors;
 using OpenTelemetry;
@@ -36,6 +37,8 @@ public static class TelemetryExtensions
             {
                 builder.SetErrorStatusOnException();
             }
+
+            TelemetrySource.Source = new ActivitySource(config.AppName);
 
             if (!string.IsNullOrEmpty(zipkinEndpoint))
             {
