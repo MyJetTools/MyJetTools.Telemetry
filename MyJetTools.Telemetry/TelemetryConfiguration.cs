@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Http;
-
 namespace MyJetTools.Telemetry;
 
 public class TelemetryConfiguration
@@ -21,14 +19,11 @@ public class TelemetryConfiguration
     }
 
 
-    public bool ValidateRoutes(HttpContext context)
+    public bool ValidateRoutes(string path)
     {
         if (IgnoreRoutes == null || !IgnoreRoutes.Any())
             return false;
 
-        var path = context.Request.Path.ToString();
-
-
-        return !IgnoreRoutes.Any(route => path.Contains(route));
+        return !IgnoreRoutes.Any(path.Contains);
     }
 }

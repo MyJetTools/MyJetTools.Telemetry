@@ -18,7 +18,7 @@ public static class TelemetryExtensions
                 .AddAspNetCoreInstrumentation(options =>
                 {
                     options.RecordException = true;
-                    options.Filter = config.ValidateRoutes;
+                    options.Filter = itm => config.ValidateRoutes(itm.Request.Path.ToString());
                     options.EnableGrpcAspNetCoreSupport = true;
                 })
                 .SetSampler(new AlwaysOnSampler())
