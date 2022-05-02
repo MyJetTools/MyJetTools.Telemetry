@@ -13,7 +13,7 @@ public static class TelemetryExtensions
     public static ActivitySource Source;
     
     public static IServiceCollection SetupsTelemetry(this IServiceCollection services, TelemetryConfiguration config,
-        string? zipkinEndpoint = null)
+        string? zipkinEndpoint = null, bool isAddConsoleExporter = false)
     {
         Source = new ActivitySource(config.AppName);
 
@@ -52,8 +52,6 @@ public static class TelemetryExtensions
                 builder.SetErrorStatusOnException();
             }
 
-            TelemetrySource.Source = new ActivitySource(config.AppName);
-
             if (!string.IsNullOrEmpty(zipkinEndpoint))
             {
                 builder.AddZipkinExporter(options =>
@@ -68,6 +66,12 @@ public static class TelemetryExtensions
             else
             {
                 Console.WriteLine("Telemetry to Zipkin - DISABLED");
+            }
+
+            if (isAddConsoleExporter)
+            {
+                Console.WriteLine("Added console exporter for telemetry");
+                builder.AddConsoleExporter();
             }
         });
 
