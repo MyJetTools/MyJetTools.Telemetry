@@ -2,8 +2,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyJetTools.Telemetry", "MyJetTools.Telemetry\MyJetTools.Telemetry.csproj", "{4E18327C-E04A-4EA6-9346-13746F25C0BC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MyJetTools.Telemetry.Tests", "MyJetTools.Telemetry.Tests\MyJetTools.Telemetry.Tests.csproj", "{C8594316-B382-44D8-9C87-053D9CC4B517}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
