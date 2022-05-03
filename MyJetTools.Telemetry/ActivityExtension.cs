@@ -4,7 +4,7 @@ namespace MyJetTools.Telemetry
 {
     public static class ActivityExtension
     {
-        internal static string GetSpanId(this Activity activity)
+        public static string GetSpanId(this Activity activity)
         {
             return activity.IdFormat switch
             {

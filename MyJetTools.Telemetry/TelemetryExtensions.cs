@@ -52,7 +52,6 @@ namespace MyJetTools.Telemetry
                     })
                     .SetSampler(new AlwaysOnSampler())
                     .AddSource(appName)
-                    .AddSource("SimpleTrading")
                     .AddGrpcClientInstrumentation()
                     .SetResourceBuilder(ResourceBuilder.CreateDefault()
                         .AddService($"{appNamePrefix}{appName}"));

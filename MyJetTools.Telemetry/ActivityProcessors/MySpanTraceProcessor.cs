@@ -3,7 +3,7 @@ using OpenTelemetry;
 
 namespace MyJetTools.Telemetry.ActivityProcessors
 {
-    internal class SpanTraceProcessor : BaseProcessor<Activity>
+    public class SpanTraceProcessor : BaseProcessor<Activity>
     {
         public override void OnEnd(Activity data)
         {

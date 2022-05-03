@@ -3,7 +3,7 @@ using OpenTelemetry;
 
 namespace MyJetTools.Telemetry.ActivityProcessors
 {
-    internal class TraceExceptionProcessor : BaseProcessor<Activity>
+    public class TraceExceptionProcessor : BaseProcessor<Activity>
     {
         public override void OnEnd(Activity data)
         {
