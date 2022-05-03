@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using MyJetTools.Telemetry.Processors;
 using OpenTelemetry;
@@ -11,11 +12,16 @@ namespace MyJetTools.Telemetry;
 public static class TelemetryExtensions
 {
     public static ActivitySource Source;
-    
-    public static IServiceCollection SetupsTelemetry(this IServiceCollection services, TelemetryConfiguration config,
-        string? zipkinEndpoint = null, bool isAddConsoleExporter = false)
+
+    public static IServiceCollection SetupsTelemetry(this IServiceCollection services,
+        string appName,
+        string appNamePrefix,
+        string zipkinEndpoint = null,
+        Func<HttpRequest, bool> httpRequestFilter = null,
+        IEnumerable<string> sources = null,
+        bool errorStatusOnException = false)
     {
-        Source = new ActivitySource(config.AppName);
+        Source = new ActivitySource(appName);
 
         ActivitySource.AddActivityListener(new ActivityListener
         {
@@ -25,29 +31,41 @@ public static class TelemetryExtensions
             Sample = (ref ActivityCreationOptions<ActivityContext> activityOptions) =>
                 ActivitySamplingResult.AllData
         });
-        
+
         services.AddOpenTelemetryTracing((builder) =>
         {
             builder
                 .AddAspNetCoreInstrumentation(options =>
                 {
                     options.RecordException = true;
-                    options.Filter = itm => config.ValidateRoutes(itm.Request.Path.ToString());
+                    options.Filter = context =>
+                    {
+                        if (context.Request.Path.ToString().Contains("isalive")) return false;
+                        if (context.Request.Path.ToString().Contains("metrics")) return false;
+                        if (context.Request.Path.ToString().Contains("dependencies")) return false;
+                        if (context.Request.Path.ToString().Contains("swagger")) return false;
+                        return true;
+                    };
                     options.EnableGrpcAspNetCoreSupport = true;
                 })
                 .SetSampler(new AlwaysOnSampler())
                 .AddProcessor(new TelemetryExceptionProcessor())
-                .AddProcessor(new TelemetrySpanProcessor())
+                .AddProcessor(new SpanTraceProcessor())
                 .AddGrpcClientInstrumentation()
                 .SetResourceBuilder(ResourceBuilder.CreateDefault()
-                    .AddService($"{config.AppNamePrefix}{config.AppName}"));
+                    .AddService($"{appNamePrefix}{appName}"));
 
-            foreach (var source in config.Sources)
+
+            if (sources != null)
             {
-                builder.AddSource(source);
+                foreach (var source in sources)
+                {
+                    builder.AddSource(source);
+                }
             }
 
-            if (config.IsShowErrorStatus)
+
+            if (errorStatusOnException)
             {
                 builder.SetErrorStatusOnException();
             }
@@ -67,17 +85,11 @@ public static class TelemetryExtensions
             {
                 Console.WriteLine("Telemetry to Zipkin - DISABLED");
             }
-
-            if (isAddConsoleExporter)
-            {
-                Console.WriteLine("Added console exporter for telemetry");
-                builder.AddConsoleExporter();
-            }
         });
 
         return services;
     }
-    
+
     public static Activity? StartActivity(string name, ActivityKind kind = ActivityKind.Internal)
     {
         return Source.StartActivity(name, kind);
@@ -86,9 +98,9 @@ public static class TelemetryExtensions
     public static Activity? FailActivity(this Exception ex)
     {
         var activity = Activity.Current;
-            
+
         if (activity == null) return activity;
-            
+
         activity.RecordException(ex);
         activity.SetStatus(Status.Error);
 
@@ -102,7 +114,7 @@ public static class TelemetryExtensions
         if (activity == null) return activity;
 
         activity.RecordException(ex);
-            
+
 
         return activity;
     }
