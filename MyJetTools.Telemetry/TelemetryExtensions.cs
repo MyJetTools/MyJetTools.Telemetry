@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using MyJetTools.Telemetry.Processors;
 using OpenTelemetry;
@@ -9,54 +10,74 @@ namespace MyJetTools.Telemetry;
 
 public static class TelemetryExtensions
 {
-    public static IServiceCollection SetupsTelemetry(this IServiceCollection services, TelemetryConfiguration config,
-        string? zipkinEndpoint = null)
-    {
-        services.AddOpenTelemetryTracing((builder) =>
+    public static IServiceCollection AddMyTelemetry(this IServiceCollection services,
+            string appNamePrefix,
+            string appName,
+            string zipkinEndpoint = null,
+            Func<HttpRequest, bool> httpRequestFilter = null,
+            IEnumerable<string> sources = null,
+            bool errorStatusOnException = false,
+            bool setDbStatementForText = true)
         {
-            builder
-                .AddAspNetCoreInstrumentation(options =>
+            services.AddOpenTelemetryTracing((builder) =>
                 {
-                    options.RecordException = true;
-                    options.Filter = config.ValidateRoutes;
-                    options.EnableGrpcAspNetCoreSupport = true;
-                })
-                .SetSampler(new AlwaysOnSampler())
-                .AddProcessor(new TelemetryExceptionProcessor())
-                .AddProcessor(new TelemetrySpanProcessor())
-                .AddGrpcClientInstrumentation()
-                .SetResourceBuilder(ResourceBuilder.CreateDefault()
-                    .AddService($"{config.AppNamePrefix}{config.AppName}"));
+                    builder
+                        .AddAspNetCoreInstrumentation(options =>
+                        {
+                            options.RecordException = true;
+                            options.Filter = context =>
+                            {
+                                if (httpRequestFilter != null && httpRequestFilter(context.Request)) return false;
+                                if (context.Request.Path.ToString().Contains("isalive")) return false;
+                                if (context.Request.Path.ToString().Contains("metrics")) return false;
+                                if (context.Request.Path.ToString().Contains("dependencies")) return false;
+                                if (context.Request.Path.ToString().Contains("swagger")) return false;
+                                if (context.Request.Path.ToString() == "/") return false;
+                                return true;
+                            };
+                            options.EnableGrpcAspNetCoreSupport = true;
+                        })
+                        .AddEntityFrameworkCoreInstrumentation(option =>
+                        {
+                            option.SetDbStatementForText = setDbStatementForText;
+                        })
+                        .SetSampler(new AlwaysOnSampler())
+                        .AddSource(appName)
+                        .AddGrpcClientInstrumentation()
+                        .AddProcessor(new TelemetryExceptionProcessor())
+                        .AddProcessor(new TelemetrySpanProcessor())
+                        .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService($"{appNamePrefix}{appName}"));
 
-            foreach (var source in config.Sources)
-            {
-                builder.AddSource(source);
-            }
+                    if (errorStatusOnException)
+                    {
+                        builder.SetErrorStatusOnException();
+                    }
 
-            if (config.IsShowErrorStatus)
-            {
-                builder.SetErrorStatusOnException();
-            }
+                    if (sources != null)
+                    {
+                        foreach (var source in sources)
+                        {
+                            builder.AddSource(source);
+                        }
+                    }
 
-            TelemetrySource.Source = new ActivitySource(config.AppName);
+                    if (!string.IsNullOrEmpty(zipkinEndpoint))
+                    {
+                        builder.AddZipkinExporter(options =>
+                        {
+                            options.Endpoint = new Uri(zipkinEndpoint);
+                            options.UseShortTraceIds = true;
+                            options.ExportProcessorType = ExportProcessorType.Batch;
+                        });
 
-            if (!string.IsNullOrEmpty(zipkinEndpoint))
-            {
-                builder.AddZipkinExporter(options =>
-                {
-                    options.Endpoint = new Uri(zipkinEndpoint);
-                    options.UseShortTraceIds = true;
-                    options.ExportProcessorType = ExportProcessorType.Batch;
+                        Console.WriteLine("Telemetry to Zipkin - ACTIVE");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Telemetry to Zipkin - DISABLED");
+                    }
                 });
 
-                Console.WriteLine("Telemetry to Zipkin - ACTIVE");
-            }
-            else
-            {
-                Console.WriteLine("Telemetry to Zipkin - DISABLED");
-            }
-        });
-
-        return services;
-    }
+            return services;
+        }
 }
